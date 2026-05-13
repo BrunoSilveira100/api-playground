@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM API Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="noise"></div>
+
+<div class="layout">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      LLM Playground
+    </div>
+    <div class="header-right">
+      <div class="provider-chips">
+        <div class="chip active" onclick="setProvider('openai')">OpenAI</div>
+        <div class="chip" onclick="setProvider('anthropic')">Anthropic</div>
+        <div class="chip" onclick="setProvider('groq')">Groq</div>
+        <div class="chip" onclick="setProvider('mistral')">Mistral</div>
+        <div class="chip" onclick="setProvider('ollama')">Ollama</div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Endpoint</div>
+      <div class="field" style="gap:8px;">
+        <div class="field">
+          <label>Base URL</label>
+          <input id="baseUrl" type="text" value="https://api.openai.com" />
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input id="apiKey" type="password" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>Modelo</label>
+          <input id="model" type="text" value="gpt-4o" />
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Parâmetros</div>
+      <div class="field" style="gap:12px;">
+        <div class="field">
+          <label>
+            Temperature
+            <span class="slider-val" id="tempVal">0.7</span>
+          </label>
+          <div class="slider-row">
+            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7"
+              oninput="document.getElementById('tempVal').textContent = parseFloat(this.value).toFixed(1)" />
+          </div>
+        </div>
+        <div class="field">
+          <label>
+            Max Tokens
+            <span class="slider-val" id="tokensVal">1024</span>
+          </label>
+          <div class="slider-row">
+            <input type="range" id="maxTokens" min="64" max="4096" step="64" value="1024"
+              oninput="document.getElementById('tokensVal').textContent = parseInt(this.value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Mensagens</div>
+      <div class="field" style="gap:8px;">
+        <div class="field">
+          <label>System Prompt</label>
+          <textarea id="systemPrompt" rows="3">Você é um assistente direto e preciso. Responda de forma clara e concisa.</textarea>
+        </div>
+        <div class="field">
+          <label>Mensagem</label>
+          <textarea id="userMessage" rows="4" placeholder="Digite sua mensagem..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Prompts Rápidos</div>
+      <div class="presets">
+        <button class="preset" onclick="usePreset('O que é um Large Language Model? Explique em 3 parágrafos curtos.')">
+          <span class="preset-icon">🧠</span> O que é um LLM?
+        </button>
+        <button class="preset" onclick="usePreset('Liste 5 use cases práticos de IA generativa para empresas em 2025.')">
+          <span class="preset-icon">💡</span> Use cases de IA Gen
+        </button>
+        <button class="preset" onclick="usePreset('Escreva um script Python que faz uma requisição para a API da OpenAI e imprime a resposta.')">
+          <span class="preset-icon">🐍</span> Script Python + API
+        </button>
+        <button class="preset" onclick="usePreset('Explique a diferença entre tokens, embeddings e vetores em IA.')">
+          <span class="preset-icon">🔢</span> Tokens vs Embeddings
+        </button>
+        <button class="preset" onclick="usePreset('Como funciona o fine-tuning de um modelo de linguagem? Dê um exemplo prático.')">
+          <span class="preset-icon">⚙️</span> Fine-tuning
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" onclick="sendRequest(false)">
+        ▶  Enviar
+      </button>
+      <button class="btn btn-ghost" onclick="sendRequest(true)">
+        ⚡ Stream
+      </button>
+      <button class="btn btn-ghost" onclick="clearAll()">
+        ✕ Limpar
+      </button>
+    </div>
+
+  </aside>
+
+  <div class="main">
+    <div class="output-tabs">
+      <button class="tab active" onclick="switchTab('response', this)">Resposta</button>
+      <button class="tab" onclick="switchTab('code', this)">Código</button>
+      <button class="tab" onclick="switchTab('raw', this)">JSON Raw</button>
+    </div>
+
+    <div class="output-panel" id="panel-response">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <p>aguardando requisição...</p>
+      </div>
+      <div id="responseMeta" class="response-meta" style="display:none;"></div>
+      <div id="responseContent"></div>
+    </div>
+
+    <div class="output-panel hidden" id="panel-code">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-family:var(--mono); font-size:11px; color:var(--muted);">javascript · fetch API</span>
+        <button class="copy-btn" onclick="copyCode()">⎘ copiar</button>
+      </div>
+      <pre id="codeContent"></pre>
+    </div>
+
+    <div class="output-panel hidden" id="panel-raw">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-family:var(--mono); font-size:11px; color:var(--muted);">application/json</span>
+        <button class="copy-btn" onclick="copyRaw()">⎘ copiar</button>
+      </div>
+      <pre id="rawContent" style="font-family:var(--mono); font-size:12px; color:#a0a0d0; white-space:pre; overflow-x:auto;"></pre>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-text" id="statusText">pronto</span>
+      <span style="font-family:var(--mono); font-size:11px; color:var(--muted);" id="endpointLabel"></span>
+    </div>
+  </div>
+</div>
+
+<script src="js/api-playground.js"></script>
+</body>
+</html>

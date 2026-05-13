@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM API Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0e10;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --border: #2a2a32;
+  --border2: #363640;
+  --text: #e8e8f0;
+  --muted: #7070a0;
+  --accent: #7c6af7;
+  --accent2: #5d4fd4;
+  --green: #3ecf8e;
+  --red: #f45b69;
+  --amber: #f5a623;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Syne', sans-serif;
+}
+
+body {
+  font-family: var(--display);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.noise {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+.layout {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  grid-template-rows: 60px 1fr;
+  min-height: 100vh;
+}
+
+header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(14,14,16,0.95);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
+}
+
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.header-right {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.provider-chips {
+  display: flex; gap: 6px;
+}
+
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.chip:hover, .chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(124,106,247,0.08);
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--surface);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field label {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+input[type="text"],
+input[type="password"],
+select,
+textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237070a0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+select option { background: #1e1e24; }
+
+textarea { resize: vertical; line-height: 1.6; min-height: 80px; }
+
+.slider-row {
+  display: flex; align-items: center; gap: 10px;
+}
+
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 99px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(124,106,247,0.5);
+}
+
+.slider-val {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 28px;
+  text-align: right;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border2);
+}
+
+.btn-ghost:hover { color: var(--text); border-color: var(--border); background: var(--surface2); }
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-full { grid-column: 1 / -1; }
+
+.output-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.output-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  background: var(--surface);
+  gap: 2px;
+}
+
+.tab {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 14px 16px 12px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab:hover:not(.active) { color: var(--text); }
+
+.output-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.output-panel.hidden { display: none; }
+
+.response-meta {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--muted);
+}
+
+.meta-item span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.meta-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+
+.meta-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.meta-dot.red { background: var(--red); }
+.meta-dot.amber { background: var(--amber); }
+
+#responseContent {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+  font-family: var(--display);
+}
+
+#responseContent.error {
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.empty-icon {
+  width: 48px; height: 48px;
+  border: 1px dashed var(--border2);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  animation: spin-slow 8s linear infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.empty-state p {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+pre#codeContent {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #a0a0d0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.kw { color: #bd93f9; }
+.str { color: #3ecf8e; }
+.key { color: #8be9fd; }
+.cmt { color: #44445a; font-style: italic; }
+.num { color: var(--amber); }
+
+.status-bar {
+  padding: 0 24px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.status-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status-text.running { color: var(--amber); }
+.status-text.ok { color: var(--green); }
+.status-text.err { color: var(--red); }
+
+.spinner {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.copy-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.copy-btn:hover { color: var(--text); border-color: var(--border); }
+
+.stream-cursor {
+  display: inline-block;
+  width: 2px; height: 16px;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+  margin-left: 1px;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.presets {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.preset {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--display);
+  transition: all 0.12s;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.preset:hover { color: var(--text); border-color: var(--border2); background: var(--bg); }
+.preset-icon { font-size: 14px; width: 16px; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .provider-chips { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<div class="layout">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      LLM Playground
+    </div>
+    <div class="header-right">
+      <div class="provider-chips">
+        <div class="chip active" onclick="setProvider('openai')">OpenAI</div>
+        <div class="chip" onclick="setProvider('anthropic')">Anthropic</div>
+        <div class="chip" onclick="setProvider('groq')">Groq</div>
+        <div class="chip" onclick="setProvider('mistral')">Mistral</div>
+        <div class="chip" onclick="setProvider('ollama')">Ollama</div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Endpoint</div>
+      <div class="field" style="gap:8px;">
+        <div class="field">
+          <label>Base URL</label>
+          <input id="baseUrl" type="text" value="https://api.openai.com" />
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input id="apiKey" type="password" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>Modelo</label>
+          <input id="model" type="text" value="gpt-4o" />
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Parâmetros</div>
+      <div class="field" style="gap:12px;">
+        <div class="field">
+          <label>
+            Temperature
+            <span class="slider-val" id="tempVal">0.7</span>
+          </label>
+          <div class="slider-row">
+            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7"
+              oninput="document.getElementById('tempVal').textContent = parseFloat(this.value).toFixed(1)" />
+          </div>
+        </div>
+        <div class="field">
+          <label>
+            Max Tokens
+            <span class="slider-val" id="tokensVal">1024</span>
+          </label>
+          <div class="slider-row">
+            <input type="range" id="maxTokens" min="64" max="4096" step="64" value="1024"
+              oninput="document.getElementById('tokensVal').textContent = parseInt(this.value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Mensagens</div>
+      <div class="field" style="gap:8px;">
+        <div class="field">
+          <label>System Prompt</label>
+          <textarea id="systemPrompt" rows="3">Você é um assistente direto e preciso. Responda de forma clara e concisa.</textarea>
+        </div>
+        <div class="field">
+          <label>Mensagem</label>
+          <textarea id="userMessage" rows="4" placeholder="Digite sua mensagem..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Prompts Rápidos</div>
+      <div class="presets">
+        <button class="preset" onclick="usePreset('O que é um Large Language Model? Explique em 3 parágrafos curtos.')">
+          <span class="preset-icon">🧠</span> O que é um LLM?
+        </button>
+        <button class="preset" onclick="usePreset('Liste 5 use cases práticos de IA generativa para empresas em 2025.')">
+          <span class="preset-icon">💡</span> Use cases de IA Gen
+        </button>
+        <button class="preset" onclick="usePreset('Escreva um script Python que faz uma requisição para a API da OpenAI e imprime a resposta.')">
+          <span class="preset-icon">🐍</span> Script Python + API
+        </button>
+        <button class="preset" onclick="usePreset('Explique a diferença entre tokens, embeddings e vetores em IA.')">
+          <span class="preset-icon">🔢</span> Tokens vs Embeddings
+        </button>
+        <button class="preset" onclick="usePreset('Como funciona o fine-tuning de um modelo de linguagem? Dê um exemplo prático.')">
+          <span class="preset-icon">⚙️</span> Fine-tuning
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" onclick="sendRequest(false)">
+        ▶&nbsp; Enviar
+      </button>
+      <button class="btn btn-ghost" onclick="sendRequest(true)">
+        ⚡ Stream
+      </button>
+      <button class="btn btn-ghost" onclick="clearAll()">
+        ✕ Limpar
+      </button>
+    </div>
+
+  </aside>
+
+  <div class="main">
+    <div class="output-tabs">
+      <button class="tab active" onclick="switchTab('response', this)">Resposta</button>
+      <button class="tab" onclick="switchTab('code', this)">Código</button>
+      <button class="tab" onclick="switchTab('raw', this)">JSON Raw</button>
+    </div>
+
+    <div class="output-panel" id="panel-response">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <p>aguardando requisição...</p>
+      </div>
+      <div id="responseMeta" class="response-meta" style="display:none;"></div>
+      <div id="responseContent"></div>
+    </div>
+
+    <div class="output-panel hidden" id="panel-code">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-family:var(--mono); font-size:11px; color:var(--muted);">javascript · fetch API</span>
+        <button class="copy-btn" onclick="copyCode()">⎘ copiar</button>
+      </div>
+      <pre id="codeContent"></pre>
+    </div>
+
+    <div class="output-panel hidden" id="panel-raw">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-family:var(--mono); font-size:11px; color:var(--muted);">application/json</span>
+        <button class="copy-btn" onclick="copyRaw()">⎘ copiar</button>
+      </div>
+      <pre id="rawContent" style="font-family:var(--mono); font-size:12px; color:#a0a0d0; white-space:pre; overflow-x:auto;"></pre>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-text" id="statusText">pronto</span>
+      <span style="font-family:var(--mono); font-size:11px; color:var(--muted);" id="endpointLabel"></span>
+    </div>
+  </div>
+</div>
+
+<script src="api-playground.js"></script>
+</body>
+</html>
