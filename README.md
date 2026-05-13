@@ -78,24 +78,4 @@ git push origin master
 - Se usar `Ollama`, o app preenche `apiKey` automaticamente com `ollama` quando selecionado.
 - Abra o console do navegador (F12) se aparecer erro de rede ou CORS.
 
-## 📌 Publicação no GitHub
-
-Se quiser, publique o site como GitHub Pages usando o branch `master` ou `main`.
-
-1. Crie o repositório no GitHub.
-2. Configure o remoto:
-
-```powershell
-git remote add origin https://github.com/BrunoSilveira100/api-playground.git
-```
-
-3. Envie o código:
-
-```powershell
-git push -u origin master
-```
-
----
-
-Made with ❤️ para testar APIs de LLM de forma simples e rápida.
 
